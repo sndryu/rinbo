@@ -1,9 +1,84 @@
 <!DOCTYPE html>
+<html lang="ja">
 <head>
-<meta charset ="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VALORANT プレイヤー統計ビューア</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(to right, #0f172a, #1e293b);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 0 30px rgba(0,0,0,0.2);
+    }
+    input, button {
+      outline: none;
+    }
+  </style>
 </head>
-<body>
-<a1 class=a>
-これはリンボの珍歩です
-</a>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="glass max-w-xl w-full">
+    <h1 class="text-3xl font-bold text-center mb-6">VALORANT 統計ビューア</h1>
+
+    <form id="searchForm" class="flex flex-col sm:flex-row gap-3 mb-6">
+      <input id="riotId" type="text" placeholder="例: Ryuichi#JP1" required
+             class="flex-1 px-4 py-2 rounded bg-gray-800 text-white placeholder-gray-400">
+      <button type="submit"
+              class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded text-white font-semibold">
+        検索
+      </button>
+    </form>
+
+    <div id="result" class="space-y-4 text-center"></div>
+  </div>
+
+  <script>
+    document.getElementById("searchForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const riotId = document.getElementById("riotId").value;
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "🔄 読み込み中...";
+
+      const [name, tag] = riotId.split("#");
+      if (!name || !tag) {
+        resultDiv.innerHTML = "⚠️ 正しいRiot ID形式で入力してください（例: Ryuichi#JP1）";
+        return;
+      }
+
+      try {
+        // アカウント情報取得
+        const res = await fetch(`https://api.henrikdev.xyz/valorant/v1/account/${name}/${tag}`);
+        const data = await res.json();
+
+        if (!data.status || data.status !== 200) {
+          resultDiv.innerHTML = "⚠️ プレイヤーが見つかりません。";
+          return;
+        }
+
+        // ランク統計取得
+        const statsRes = await fetch(`https://api.henrikdev.xyz/valorant/v2/mmr/${data.data.region}/${name}/${tag}`);
+        const stats = await statsRes.json();
+
+        resultDiv.innerHTML = `
+          <img src="${data.data.card.wide}" class="mx-auto rounded-lg shadow-lg" width="500"><br>
+          <h2 class="text-2xl font-bold">${data.data.name}#${data.data.tag}</h2>
+          <p class="text-lg mt-2">ランク: <span class="font-semibold">${stats.data.currenttierpatched || '不明'}</span></p>
+          <p class="text-lg">現在のRR: ${stats.data.ranking_in_tier}/100</p>
+          <p class="text-lg">ヘッドショット率: ${stats.data.headshot_percent}%</p>
+        `;
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = "❌ 取得中にエラーが発生しました。時間をおいて再試行してください。";
+      }
+    });
+  </script>
 </body>
+</html>
